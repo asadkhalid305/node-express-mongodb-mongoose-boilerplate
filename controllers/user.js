@@ -5,7 +5,7 @@
 /**
 * npm package and custom file import
 */
-const UserModel = require('../models/user').default;
+const UserModel = require('../models/user');
 const Mongoose = require('mongoose');
 
 /**
@@ -18,15 +18,8 @@ const isUserExistInDb = (req) => {
     }, (err, item) => {
       if (err) {
         reject(err);
-      } else if (item) {
-        item.save().then((result) => {
-          resolve(result);
-        }).catch((err) => {
-          reject(err);
-        })
-      } else {
+      } else
         resolve(item)
-      }
     })
       .catch((err) => {
         reject(err);
@@ -40,7 +33,7 @@ const createNewUser = (req) => {
       id: new Mongoose.Types.ObjectId(),
       name: req.body.name,
       email: req.body.email,
-      password: Functions.hashing.createHash(req.body.password),
+      password: req.body.password,
     });
 
     user.save().then((user) => {
@@ -116,56 +109,44 @@ const User = {
   },
 
   login: (req, res) => {
-    if (req.body.loginType && req.body.email) {
-      if (req.body.password) {
-        isUserExistInDb(req).then((user) => {
-          if (user) {
-            user.loginType = req.body.loginType
-            user.save();
-            if (Functions.hashing.compareHash(req.body.password, user.password)) {
-              res.status(201).send({
-                message: 'success',
-                data: {
-                  id: user,
-                  details: `you have logged in via ${req.body.loginType} from following address: ${user.email}`
-                }
-              })
-            } else {
-              res.status(401).send({
-                message: 'failed',
-                data: {
-                  details: 'invalid email or password'
-                }
-              })
-            }
+    if (req.body.password && req.body.email) {
+      isUserExistInDb(req).then((user) => {
+        if (user) {
+          if (req.body.password === user.password) {
+            res.status(201).send({
+              message: 'success',
+              data: {
+                id: user,
+                details: `you have logged in from following address: ${user.email}`
+              }
+            })
           } else {
-            res.status(400).send({
-              message: 'user does not exists'
+            res.status(401).send({
+              message: 'failed',
+              data: {
+                details: 'invalid email or password'
+              }
             })
           }
-        }).catch((err) => {
+        } else {
           res.status(400).send({
-            message: 'failed',
-            data: {
-              details: err
-            }
+            message: 'user does not exists'
           })
-        })
-      } else {
+        }
+      }).catch((err) => {
         res.status(400).send({
           message: 'failed',
           data: {
-            id: user,
-            details: `password not found`
+            details: err
           }
         })
-      }
+      })
     } else {
       res.status(406).send({
         message: 'failed',
         data: {
           id: user,
-          details: `login type or email not found`
+          details: `email or password not found`
         }
       })
     }
